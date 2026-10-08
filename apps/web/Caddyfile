@@ -1,0 +1,40 @@
+# Caddy phục vụ React dist + reverse proxy /api (spec §15.1).
+# HTTPS tự động với chứng chỉ Let's Encrypt cho {$SITE_DOMAIN}.
+{$SITE_DOMAIN:localhost:80} {
+	encode zstd gzip
+
+	@upload path /api/teacher/files /api/teacher/quizzes/import/* /api/teacher/classes/*/students/import
+	request_body @upload {
+		max_size 60MB
+	}
+
+	handle /api/* {
+		reverse_proxy api:8080
+	}
+
+	# health cho monitoring từ ngoài (spec §13) — không proxy thì rơi SPA fallback trả 200 giả
+	handle /health/* {
+		reverse_proxy api:8080
+	}
+
+	handle /sitemap.xml {
+		reverse_proxy api:8080
+	}
+
+	handle /openapi/* {
+		reverse_proxy api:8080
+	}
+
+	handle {
+		root * /srv
+		try_files {path} /index.html
+		file_server
+	}
+
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		X-Content-Type-Options nosniff
+		Referrer-Policy strict-origin-when-cross-origin
+		Content-Security-Policy "default-src 'self'; script-src 'self' https://accounts.google.com/gsi/client; frame-src https://accounts.google.com; connect-src 'self' https://accounts.google.com; img-src 'self' data: https://res.cloudinary.com https://lh3.googleusercontent.com; media-src https://res.cloudinary.com; style-src 'self' 'unsafe-inline' https://accounts.google.com https://fonts.googleapis.com; font-src https://fonts.gstatic.com"
+	}
+}

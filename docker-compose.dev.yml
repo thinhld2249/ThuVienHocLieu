@@ -1,0 +1,34 @@
+# Môi trường dev: db + gotenberg. API & FE chạy trên host (make api / make web).
+services:
+  db:
+    image: postgres:17
+    environment:
+      POSTGRES_DB: hoclieu
+      POSTGRES_USER: hoclieu
+      POSTGRES_PASSWORD: hoclieu
+    ports:
+      # 5433: port 5432 đã bị postgres cá nhân chiếm; đổi về 5432 nếu trống (đồng bộ appsettings.json)
+      - "5433:5432"
+    volumes:
+      - pgdata_dev:/var/lib/postgresql/data
+      - ./deploy/postgres/init-extensions.sql:/docker-entrypoint-initdb.d/10-extensions.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U hoclieu -d hoclieu"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  gotenberg:
+    build: ./deploy/gotenberg
+    # chỉ dùng trong dev mới mở port ra host; prod chỉ trong mạng nội bộ compose
+    # 3001: port 3000 bị open-webui (máy dev) chiếm — đồng bộ Gotenberg:Url trong appsettings.Development.json
+    ports:
+      - "3001:3000"
+    healthcheck:
+      test: ["CMD", "curl", "-fs", "http://localhost:3000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  pgdata_dev: {}

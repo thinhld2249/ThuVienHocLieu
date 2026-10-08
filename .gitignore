@@ -1,0 +1,43 @@
+# .NET
+bin/
+obj/
+*.user
+.vs/
+.vscode/
+artifacts/
+TestResults/
+
+# Node
+node_modules/
+dist/
+coverage/
+*.local
+
+# Env & secrets
+.env
+deploy/.env
+!.env.example
+!deploy/.env.example
+
+# Backups & local data
+backups/
+pgdata/
+apps/api/src/HocLieu.Api/data/
+
+# Local agent & scratch
+.qwen/
+.scratch/
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Playwright
+playwright-report/
+test-results/
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
