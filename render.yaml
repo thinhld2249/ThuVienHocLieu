@@ -42,9 +42,8 @@ services:
         value: "thinhld2249@gmail.com"
       # BẮT BUỘC trên Render: không có ổ đĩa bền cho Docker service → file phải lưu
       # Cloudinary. Giá trị dưới đây là placeholder — nhập thật ở dashboard
-      # (sync: false để blueprint không đè giá trị bạn đã sửa).
+      # (hoclieu-api → Environment).
       - key: Cloudinary__Url
-        sync: false
         value: "cloudinary://KEY:SECRET@CLOUD_NAME"
       - key: Cloudinary__Root
         value: "hoclieu-prod"
