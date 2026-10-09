@@ -8,11 +8,15 @@
 # Hướng dẫn chi tiết + ước tính chi phí + hạn chế: docs/render-deploy.md
 # Dịch vụ Docker trong blueprint: type: web + runtime: docker (không có
 # type "docker" — render.com/docs/blueprint-spec).
+# Render mặc định build context = root repo → phải khai báo dockerContext
+# trùng thư mục chứa Dockerfile để đường dẫn COPY trong Dockerfile hoạt động
+# giống build cục bộ.
 services:
   - type: web
     runtime: docker
     name: hoclieu-web
     dockerfilePath: ./apps/web/Dockerfile
+    dockerContext: ./apps/web
     plan: free
     envVars:
       # Render LB xử lý TLS ở mép → Caddy chỉ phục vụ HTTP thường (chủ động ":80"
@@ -26,6 +30,7 @@ services:
     runtime: docker
     name: hoclieu-api
     dockerfilePath: ./apps/api/Dockerfile
+    dockerContext: ./apps/api
     plan: free
     healthCheckPath: /health/live
     envVars:
@@ -60,6 +65,7 @@ services:
     runtime: docker
     name: hoclieu-gotenberg
     dockerfilePath: ./deploy/gotenberg/Dockerfile
+    dockerContext: ./deploy/gotenberg
     plan: free
     healthCheckPath: /health
 
