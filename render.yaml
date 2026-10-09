@@ -19,10 +19,11 @@ services:
     dockerContext: ./apps/web
     plan: free
     envVars:
-      # Render LB xử lý TLS ở mép → Caddy chỉ phục vụ HTTP thường (chủ động ":80"
-      # để Caddy không tự xin Let's Encrypt).
+      # Render LB xử lý TLS ở mép → Caddy phục vụ HTTP thường trên port Render
+      # inject ($PORT, mặc định 10000). SITE_DOMAIN = domain trần (không port)
+      # — Caddyfile tự nối :$PORT.
       - key: SITE_DOMAIN
-        value: "hoclieu-web.onrender.com:80"
+        value: "hoclieu-web.onrender.com"
       - key: API_URL
         value: "https://hoclieu-api.onrender.com"
 

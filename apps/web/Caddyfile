@@ -1,8 +1,12 @@
 # Caddy phục vụ React dist + reverse proxy /api (spec §15.1).
-# HTTPS tự động với chứng chỉ Let's Encrypt cho {$SITE_DOMAIN} (khi domain
-# trần, vd 1-VM compose). Trên Render: SITE_DOMAIN="<host>:80" (Caddy phục vụ
-# HTTP thường, Render LB xử lý TLS) và API_URL = URL công khai của service api.
-{$SITE_DOMAIN:localhost:80} {
+# Site address = http://{$SITE_DOMAIN:localhost}:{$PORT:80} — scheme http://
+# bắt buộc HTTP thường, tắt hoàn toàn automatic HTTPS/Let's Encrypt (trên
+# Render LB xử lý TLS; port tường minh không đủ — Caddy vẫn xin chứng chỉ).
+#   - dev cục bộ: không env → http://localhost:80
+#   - 1-VM compose: SITE_DOMAIN=<domain> trần → http://<domain>:80
+#   - Render: SITE_DOMAIN=<domain> trần, PORT do Render inject (mặc định 10000)
+# API_URL = URL công khai của service api (Render) hoặc api:8080 (compose).
+http://{$SITE_DOMAIN:localhost}:{$PORT:80} {
 	encode zstd gzip
 
 	@upload path /api/teacher/files /api/teacher/quizzes/import/* /api/teacher/classes/*/students/import

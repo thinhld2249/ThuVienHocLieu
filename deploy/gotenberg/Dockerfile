@@ -30,3 +30,8 @@ RUN if [ -n "$(ls -A /usr/share/fonts/truetype/core 2>/dev/null)" ]; then fc-cac
 USER gotenberg
 
 EXPOSE 3000
+# Render: web service phải listen trên $PORT (Render inject, mặc định 10000) —
+# nếu không health check + traffic của Render rơi vào port sai. docker compose
+# không có PORT → 3000 (spec §8.1).
+ENTRYPOINT ["/usr/bin/tini", "--", "sh", "-c", "exec gotenberg --api-port=${PORT:-3000}"]
+CMD []
