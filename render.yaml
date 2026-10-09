@@ -13,7 +13,7 @@ services:
     runtime: docker
     name: hoclieu-web
     dockerfilePath: ./apps/web/Dockerfile
-    plan: starter
+    plan: free
     envVars:
       # Render LB xử lý TLS ở mép → Caddy chỉ phục vụ HTTP thường (chủ động ":80"
       # để Caddy không tự xin Let's Encrypt).
@@ -26,7 +26,7 @@ services:
     runtime: docker
     name: hoclieu-api
     dockerfilePath: ./apps/api/Dockerfile
-    plan: starter
+    plan: free
     healthCheckPath: /health/live
     envVars:
       - key: ConnectionStrings__Default
@@ -60,10 +60,10 @@ services:
     runtime: docker
     name: hoclieu-gotenberg
     dockerfilePath: ./deploy/gotenberg/Dockerfile
-    plan: starter
+    plan: free
     healthCheckPath: /health
 
 databases:
   - name: hoclieu-db
-    # Free Postgres của Render là trial 90 ngày — chạy thật nên chọn gói trả phí.
-    plan: starter
+    # Postgres free của Render là trial 90 ngày — hết hạn phải chuyển trả phí.
+    plan: free
