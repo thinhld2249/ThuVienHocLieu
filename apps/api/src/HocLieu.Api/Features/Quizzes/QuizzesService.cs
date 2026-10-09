@@ -2,7 +2,6 @@
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using ClosedXML.Excel;
-using Ganss.Xss;
 using HocLieu.Common;
 using HocLieu.Domain;
 using HocLieu.Domain.Entities;
@@ -45,7 +44,6 @@ public sealed class QuizzesService(
     AppDbContext db,
     AppSettingsService settings,
     IAuditLogger audit,
-    HtmlSanitizer sanitizer,
     TimeProvider time,
     FilesService files,
     IFileStorage storage)
@@ -59,7 +57,7 @@ public sealed class QuizzesService(
         ContentScope Scope, long? TeamId, string? DescriptionHtml, long? PrintFileId,
         short? TimeLimitMinutes, bool ShuffleQuestions, bool ShuffleOptions,
         ShowAnswers ShowAnswers, IdentityMode IdentityMode, short? MaxAttempts,
-        MultiScoring MultiScoring, ScoreRounding ScoreRounding);
+        MultiScoring MultiScoring, ScoreRounding ScoreRounding, bool ClassOnly);
 
     private static void AddErr(Dictionary<string, string[]> errors, string key, string message)
     {
@@ -163,6 +161,7 @@ public sealed class QuizzesService(
         var identity = s?.IdentityMode is { Length: > 0 } im && Enum.TryParse<IdentityMode>(im, true, out var p2) ? p2 : IdentityMode.Name;
         var multiScoring = s?.MultiScoring is { Length: > 0 } ms && Enum.TryParse<MultiScoring>(ms, true, out var p3) ? p3 : MultiScoring.AllOrNothing;
         var scoreRounding = s?.ScoreRounding is { Length: > 0 } sr && Enum.TryParse<ScoreRounding>(sr, true, out var p4) ? p4 : ScoreRounding.Quarter;
+        var classOnly = s?.ClassOnly ?? false;
 
         if (req.PrintFileId is not null)
         {
@@ -174,7 +173,7 @@ public sealed class QuizzesService(
 
         var descriptionHtml = string.IsNullOrWhiteSpace(req.DescriptionHtml)
             ? null
-            : sanitizer.Sanitize(req.DescriptionHtml);
+            : HtmlSanitize.Clean(req.DescriptionHtml);
 
         if (errors.Count > 0)
             return (errors, null);
@@ -183,7 +182,7 @@ public sealed class QuizzesService(
             title, section!, grade, req.SubjectId, yearId, req.WeekNo,
             scope, teamId, descriptionHtml, req.PrintFileId,
             timeLimit, s?.ShuffleQuestions ?? false, s?.ShuffleOptions ?? false,
-            showAnswers, identity, maxAttempts, multiScoring, scoreRounding));
+            showAnswers, identity, maxAttempts, multiScoring, scoreRounding, classOnly));
     }
 
     public async Task<Quiz> CreateAsync(ViewerContext viewer, CreateQuizRequest req, CancellationToken ct)
@@ -211,6 +210,7 @@ public sealed class QuizzesService(
             OwnerId = viewer.UserId,
             TeamId = r.TeamId,
             Scope = r.Scope,
+            ClassOnly = r.ClassOnly,
             // §4.4: bài tập luôn được tạo ở Hidden
             PublishMode = PublishMode.Hidden,
             PublishFrom = null,
@@ -314,6 +314,7 @@ public sealed class QuizzesService(
             ? ModerationStatus.PendingReview
             : ModerationStatus.Approved;
         ApplyResolved(quiz, r);
+        quiz.ClassOnly = r.ClassOnly;
         quiz.TimeLimitMinutes = r.TimeLimitMinutes;
         quiz.ShuffleQuestions = r.ShuffleQuestions;
         quiz.ShuffleOptions = r.ShuffleOptions;
@@ -346,7 +347,7 @@ public sealed class QuizzesService(
             g.Title = string.IsNullOrWhiteSpace(inG.Title) ? null : inG.Title.Trim();
             g.PassageHtml = string.IsNullOrWhiteSpace(inG.PassageHtml)
                 ? null
-                : sanitizer.Sanitize(inG.PassageHtml);
+                : HtmlSanitize.Clean(inG.PassageHtml);
             if (existing is not null)
                 groupById[g.Id] = g;
         }
@@ -377,10 +378,10 @@ public sealed class QuizzesService(
             sort++;
             if (inQ.Type is { Length: > 0 } t && Enum.TryParse<QuestionType>(t, true, out var qt))
                 question.Type = qt;
-            question.ContentHtml = sanitizer.Sanitize(inQ.ContentHtml ?? string.Empty);
+            question.ContentHtml = HtmlSanitize.Clean(inQ.ContentHtml);
             question.ExplanationHtml = string.IsNullOrWhiteSpace(inQ.ExplanationHtml)
                 ? null
-                : sanitizer.Sanitize(inQ.ExplanationHtml);
+                : HtmlSanitize.Clean(inQ.ExplanationHtml);
             question.Points = inQ.Points is > 0 and <= 100 ? inQ.Points.Value : 1m;
             question.GroupId = inQ.GroupId is not null && groupById.TryGetValue(inQ.GroupId.Value, out var grp)
                 ? grp.Id
@@ -403,7 +404,7 @@ public sealed class QuizzesService(
                 keptOptionIds.Add(option.Id);
                 option.Sort = inO.Sort ?? (short)optSort;
                 optSort++;
-                option.ContentHtml = sanitizer.Sanitize(inO.ContentHtml ?? string.Empty);
+                option.ContentHtml = HtmlSanitize.Clean(inO.ContentHtml);
                 option.IsCorrect = inO.IsCorrect ?? option.IsCorrect;
             }
             db.QuestionOptions.RemoveRange(
@@ -552,7 +553,7 @@ public sealed class QuizzesService(
                     $"data-temp-id=\"{tempId}\"",
                     $"src=\"/api/files/{fileId}/image\"",
                     StringComparison.Ordinal);
-            return sanitizer.Sanitize(replaced);
+            return HtmlSanitize.Clean(replaced);
         };
 
         quiz.DescriptionHtml = finalizeHtml(draft.DescriptionHtml);
@@ -821,7 +822,7 @@ public sealed class QuizzesService(
             quiz.WeekNo,
             quiz.TeamId, quiz.Team?.Name,
             quiz.OwnerId, quiz.Owner?.FullName,
-            quiz.Scope.ToString(), quiz.PublishMode.ToString(),
+            quiz.Scope.ToString(), quiz.ClassOnly, quiz.PublishMode.ToString(),
             quiz.PublishFrom, quiz.PublishUntil,
             Visibility.GetPublishState(quiz.PublishMode, quiz.PublishFrom, quiz.PublishUntil, now).ToString(),
             quiz.ModerationStatus.ToString(), null,

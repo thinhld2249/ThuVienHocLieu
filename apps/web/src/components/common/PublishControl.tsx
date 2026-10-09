@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import dayjs from "dayjs";
 import { CalendarClock, Eye, EyeOff } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -107,18 +108,47 @@ export function PublishControl({
   const [from, setFrom] = useState(() => toLocalInput(publishFrom));
   const [until, setUntil] = useState(() => toLocalInput(publishUntil));
   const [submitting, setSubmitting] = useState(false);
-  const rootRef = useRef<HTMLDivElement>(null);
+  const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
+  const btnRef = useRef<HTMLButtonElement>(null);
   const popRef = useRef<HTMLDivElement>(null);
 
-  // Đóng popover khi bấm ra ngoài.
+  // Popover render qua portal ở body + fixed theo nút: nếu để absolute trong
+  // cell bảng, wrapper `overflow-x-auto` của bảng sẽ cắt mất (không hiện).
+  const toggleOpen = () => {
+    if (open) {
+      setOpen(false);
+      return;
+    }
+    const rect = btnRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    const width = 288; // w-72
+    let left = rect.left;
+    if (left + width > window.innerWidth - 8)
+      left = Math.max(8, window.innerWidth - width - 8);
+    setPos({ top: rect.bottom + 8, left });
+    setOpen(true);
+  };
+
+  // Đóng khi bấm ra ngoài, cuộn trang (ngoài popover) hoặc đổi kích thước.
   useEffect(() => {
     if (!open) return;
     const onDown = (e: MouseEvent) => {
-      if (popRef.current && !popRef.current.contains(e.target as Node))
-        setOpen(false);
+      const t = e.target as Node;
+      if (popRef.current?.contains(t) || btnRef.current?.contains(t)) return;
+      setOpen(false);
+    };
+    const close = (e: Event) => {
+      if (popRef.current?.contains(e.target as Node)) return;
+      setOpen(false);
     };
     document.addEventListener("mousedown", onDown);
-    return () => document.removeEventListener("mousedown", onDown);
+    window.addEventListener("scroll", close, true);
+    window.addEventListener("resize", close);
+    return () => {
+      document.removeEventListener("mousedown", onDown);
+      window.removeEventListener("scroll", close, true);
+      window.removeEventListener("resize", close);
+    };
   }, [open]);
 
   const visibleNow =
@@ -154,10 +184,7 @@ export function PublishControl({
   };
 
   return (
-    <div
-      ref={rootRef}
-      className={cn("relative inline-flex items-center gap-2", className)}
-    >
+    <div className={cn("inline-flex items-center gap-2", className)}>
       <Badge className={publishStateBadgeClass(publishState)}>
         {publishStateLabel(publishState)}
       </Badge>
@@ -178,84 +205,89 @@ export function PublishControl({
         )}
       </Button>
       <Button
+        ref={btnRef}
         variant="outline"
         size="sm"
-        onClick={() => setOpen((v) => !v)}
+        onClick={() => toggleOpen()}
         disabled={busy}
         aria-expanded={open}
       >
         <CalendarClock className="size-3.5" aria-hidden /> Hẹn giờ
       </Button>
 
-      {open ? (
-        <div
-          ref={popRef}
-          role="dialog"
-          aria-label="Hẹn giờ hiển thị"
-          className="absolute left-0 top-full z-30 mt-2 w-72 rounded-card border border-grid bg-white p-3 shadow-lg"
-        >
-          <div
-            className="mb-2 flex gap-1"
-            role="group"
-            aria-label="Preset thời gian"
-          >
-            {(
-              [
-                ["weekend", "Cuối tuần này"],
-                ["7days", "7 ngày"],
-                ["custom", "Tùy chỉnh"],
-              ] as [SchedulePreset, string][]
-            ).map(([p, label]) => (
-              <button
-                key={p}
-                type="button"
-                onClick={() => applyPreset(p)}
-                className={cn(
-                  "rounded-btn px-2 py-1 text-xs transition",
-                  preset === p
-                    ? "bg-violet text-white"
-                    : "bg-paper text-muted hover:text-violet",
-                )}
+      {open && pos
+        ? createPortal(
+            <div
+              ref={popRef}
+              role="dialog"
+              aria-label="Hẹn giờ hiển thị"
+              style={{ top: pos.top, left: pos.left }}
+              className="fixed z-50 w-72 rounded-card border border-grid bg-white p-3 shadow-lg"
+            >
+              <div
+                className="mb-2 flex gap-1"
+                role="group"
+                aria-label="Preset thời gian"
               >
-                {label}
-              </button>
-            ))}
-          </div>
-          <label className="mb-1 block text-xs text-muted">Từ</label>
-          <input
-            type="datetime-local"
-            value={from}
-            onChange={(e) => {
-              setFrom(e.target.value);
-              setPreset("custom");
-            }}
-            className="mb-2 h-9 w-full rounded-btn border border-grid px-2 text-sm outline-none focus:border-violet"
-          />
-          <label className="mb-1 block text-xs text-muted">
-            Đến (trống = không giới hạn)
-          </label>
-          <input
-            type="datetime-local"
-            value={until}
-            onChange={(e) => {
-              setUntil(e.target.value);
-              setPreset("custom");
-            }}
-            className="mb-3 h-9 w-full rounded-btn border border-grid px-2 text-sm outline-none focus:border-violet"
-          />
-          <Button
-            size="sm"
-            className="w-full"
-            disabled={submitting || !from}
-            onClick={() => void submitScheduled()}
-          >
-            {submitting ? "Đang lưu…" : "Lên lịch"}
-          </Button>
-          <p className="mt-1.5 text-[11px] leading-snug text-muted">
-            Cuối tuần này = T6 17:00 → CN 21:00 (giờ VN)
-          </p>
-        </div>
-      ) : null}
+                {(
+                  [
+                    ["weekend", "Cuối tuần này"],
+                    ["7days", "7 ngày"],
+                    ["custom", "Tùy chỉnh"],
+                  ] as [SchedulePreset, string][]
+                ).map(([p, label]) => (
+                  <button
+                    key={p}
+                    type="button"
+                    onClick={() => applyPreset(p)}
+                    className={cn(
+                      "rounded-btn px-2 py-1 text-xs transition",
+                      preset === p
+                        ? "bg-violet text-white"
+                        : "bg-paper text-muted hover:text-violet",
+                    )}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+              <label className="mb-1 block text-xs text-muted">Từ</label>
+              <input
+                type="datetime-local"
+                value={from}
+                onChange={(e) => {
+                  setFrom(e.target.value);
+                  setPreset("custom");
+                }}
+                className="mb-2 h-9 w-full rounded-btn border border-grid px-2 text-sm outline-none focus:border-violet"
+              />
+              <label className="mb-1 block text-xs text-muted">
+                Đến (trống = không giới hạn)
+              </label>
+              <input
+                type="datetime-local"
+                value={until}
+                onChange={(e) => {
+                  setUntil(e.target.value);
+                  setPreset("custom");
+                }}
+                className="mb-3 h-9 w-full rounded-btn border border-grid px-2 text-sm outline-none focus:border-violet"
+              />
+              <Button
+                size="sm"
+                className="w-full"
+                disabled={submitting || !from}
+                onClick={() => void submitScheduled()}
+              >
+                {submitting ? "Đang lưu…" : "Lên lịch"}
+              </Button>
+              <p className="mt-1.5 text-[11px] leading-snug text-muted">
+                Cuối tuần này = T6 17:00 → CN 21:00 (giờ VN)
+              </p>
+            </div>,
+            document.body,
+          )
+        : null}
     </div>
   );
 }

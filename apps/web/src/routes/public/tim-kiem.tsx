@@ -24,21 +24,17 @@ export function TimKiemPage() {
   const [filters, setFilters] = useState<ItemFilterState>(DEFAULT_FILTERS);
   const [page, setPage] = useState(1);
 
-  // q rỗng → không gọi API (tránh list toàn bộ nội dung).
-  const active = q.length > 0;
-  const { items, total, loading } = useCombinedItems(
-    {
-      q: active ? q : null,
-      grade,
-      subject: filters.subject || null,
-      year: filters.year ? Number(filters.year) : null,
-      week: filters.week ? Number(filters.week) : null,
-      sort: filters.sort,
-      page,
-      pageSize: 24,
-    },
-    active,
-  );
+  // q rỗng → hiện tất cả học liệu (trang thư viện) — vẫn dùng bộ lọc khối/môn/tuần.
+  const { items, total, loading } = useCombinedItems({
+    q: q || null,
+    grade,
+    subject: filters.subject || null,
+    year: filters.year ? Number(filters.year) : null,
+    week: filters.week ? Number(filters.week) : null,
+    sort: filters.sort,
+    page,
+    pageSize: 24,
+  });
 
   useEffect(() => {
     setPage(1);
@@ -91,34 +87,29 @@ export function TimKiemPage() {
           <ItemFilters value={filters} onChange={setFilters} />
         </div>
 
-        {!active ? (
-          <div className="flex flex-col items-center gap-2 rounded-card border border-dashed border-grid bg-white/60 px-6 py-12 text-center">
-            <Search className="size-8 text-muted/60" aria-hidden />
-            <h2 className="font-medium">Nhập từ khóa để tìm</h2>
-            <p className="max-w-md text-sm text-muted">
-              Kết quả gộp tài liệu và bài tập, hỗ trợ gõ không dấu — ví dụ “ke
-              hoach chu nhiem” khớp “Kế hoạch chủ nhiệm”.
-            </p>
-          </div>
-        ) : (
-          <>
-            <p className="mb-3 text-sm text-muted" aria-live="polite">
-              {loading ? "Đang tìm…" : `${total} kết quả cho “${q}”`}
-            </p>
-            <ItemGrid
-              items={items}
-              loading={loading}
-              emptyTitle="Không tìm thấy kết quả"
-              emptyDescription="Thử từ khóa khác, ít dấu hơn, hoặc bỏ bớt bộ lọc."
-            />
-            <Pagination
-              page={page}
-              pageSize={24}
-              total={total}
-              onChange={setPage}
-            />
-          </>
-        )}
+        <p className="mb-3 text-sm text-muted" aria-live="polite">
+          {loading
+            ? "Đang tải…"
+            : q
+              ? `${total} kết quả cho “${q}”`
+              : `${total} tài liệu & bài tập — gõ từ khóa để tìm (không dấu cũng được)`}
+        </p>
+        <ItemGrid
+          items={items}
+          loading={loading}
+          emptyTitle={q ? "Không tìm thấy kết quả" : "Chưa có nội dung"}
+          emptyDescription={
+            q
+              ? "Thử từ khóa khác, ít dấu hơn, hoặc bỏ bớt bộ lọc."
+              : "Nội dung giáo viên đăng tải sẽ hiện ở đây."
+          }
+        />
+        <Pagination
+          page={page}
+          pageSize={24}
+          total={total}
+          onChange={setPage}
+        />
       </div>
     </div>
   );

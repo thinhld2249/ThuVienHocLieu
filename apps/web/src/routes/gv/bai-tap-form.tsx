@@ -188,6 +188,7 @@ function QuizFormInner({
   const [scoreRounding, setScoreRounding] = useState<ScoreRounding>(
     data.scoreRounding as ScoreRounding,
   );
+  const [classOnly, setClassOnly] = useState(data.classOnly);
 
   // --- Câu hỏi & nhóm ---
   const warnings = useMemo(
@@ -269,6 +270,7 @@ function QuizFormInner({
       maxAttempts: maxAttempts > 0 ? maxAttempts : null,
       multiScoring,
       scoreRounding,
+      classOnly,
     };
     return {
       title: title.trim() || null,
@@ -634,6 +636,23 @@ function QuizFormInner({
           <section className="rounded-card border border-grid bg-white p-4">
             <h2 className="mb-3 text-sm font-semibold">Cài đặt làm bài</h2>
             <div className="grid gap-3 sm:grid-cols-2">
+              <Field label="Hiển thị bài tập cho">
+                <select
+                  value={classOnly ? "class" : "everyone"}
+                  onChange={(e) => {
+                    setClassOnly(e.target.value === "class");
+                    touch();
+                  }}
+                  className="h-9 w-full rounded-btn border border-grid bg-white px-2 text-sm outline-none focus:border-violet"
+                >
+                  <option value="everyone">
+                    Mọi người (hiện ở trang chủ khi Hiện/Hẹn giờ)
+                  </option>
+                  <option value="class">
+                    Chỉ học sinh lớp đã giao bài (qua mã/QR)
+                  </option>
+                </select>
+              </Field>
               <Field label="Thời gian làm (phút, trống = không giới hạn)">
                 <input
                   type="number"
@@ -821,6 +840,12 @@ function QuizFormInner({
               Bài tập đang được tạo ở chế độ ẩn — học sinh chỉ làm được khi bạn
               bấm “Hiện” hoặc hẹn giờ, hoặc khi giao cho lớp (mã/QR).
             </p>
+            {data.classOnly ? (
+              <p className="mt-2 text-xs text-violet">
+                Bài tập chỉ dành cho học sinh của lớp đã giao bài (qua mã/QR) —
+                không hiện ở trang chủ và khu công khai.
+              </p>
+            ) : null}
           </div>
           <div className="rounded-card border border-grid bg-white p-4">
             <h2 className="mb-2 text-sm font-semibold">Phạm vi xem</h2>

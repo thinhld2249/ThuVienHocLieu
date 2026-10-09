@@ -70,7 +70,12 @@ export function PublicLayout() {
 
       <footer className="border-t border-grid bg-white">
         <div className="mx-auto flex w-full max-w-6xl flex-wrap items-center gap-x-6 gap-y-2 px-4 py-6 text-sm text-muted">
-          <span className="font-medium text-ink">Học Liệu</span>
+          <Link
+            to="/tim-kiem"
+            className="font-medium text-ink transition hover:text-violet"
+          >
+            Học Liệu
+          </Link>
           <Link to="/trang/gioi-thieu" className="transition hover:text-violet">
             Giới thiệu
           </Link>

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router";
-import { GraduationCap, Plus, Trash2, X } from "lucide-react";
+import { Eye, GraduationCap, Plus, Trash2, X } from "lucide-react";
 import { useTaxonomy } from "@/features/home/api";
 import { useMe } from "@/features/auth/api";
 import { useTeamMembers } from "@/features/teams/api";
@@ -82,7 +82,7 @@ export function GvLopPage() {
                     <button
                       type="button"
                       onClick={() => navigate(`/gv/lop/${c.id}`)}
-                      className="font-medium hover:text-violet"
+                      className="font-medium text-violet hover:underline"
                     >
                       {c.name}
                     </button>
@@ -117,6 +117,15 @@ export function GvLopPage() {
                   </td>
                   <td className="p-2">
                     <div className="flex justify-end gap-1">
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        title="Xem chi tiết lớp"
+                        aria-label={`Xem lớp ${c.name}`}
+                        onClick={() => navigate(`/gv/lop/${c.id}`)}
+                      >
+                        <Eye className="size-3.5" aria-hidden /> Xem
+                      </Button>
                       <Button
                         size="sm"
                         variant="ghost"

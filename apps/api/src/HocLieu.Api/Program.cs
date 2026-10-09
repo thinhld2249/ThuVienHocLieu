@@ -188,8 +188,8 @@ builder.Services.AddScoped<FilesService>();
 builder.Services.AddScoped<AppSettingsService>();
 
 // ===== Tài liệu (M3): sanitize mọi HTML người dùng trước khi lưu (spec §12) =====
-// Cấu hình tập trung tại Common/HtmlSanitize.cs (tag + thuộc tính + scheme https)
-builder.Services.AddSingleton(HtmlSanitize.Sanitizer);
+// Mọi call site gọi HtmlSanitize.Clean() — cấu hình tập trung tại Common/HtmlSanitize.cs
+// (tag + thuộc tính + scheme https + allowlist host iframe cho video nhúng)
 builder.Services.AddScoped<DocumentsService>();
 builder.Services.AddSingleton<FileProcessingQueue>();
 builder.Services.AddSingleton<IDocumentConverter, GotenbergConverter>();

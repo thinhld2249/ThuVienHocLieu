@@ -20,6 +20,11 @@ public class Quiz
     public long? TeamId { get; set; }
     public Team? Team { get; set; }
     public ContentScope Scope { get; set; } = ContentScope.Public;
+    /// <summary>
+    /// true = chỉ học sinh của lớp đã được giao bài (qua mã/QR) xem & làm được;
+    /// không lộ ở khu công khai (trang chủ, lưới, tìm kiếm, chi tiết, attempt trực tiếp).
+    /// </summary>
+    public bool ClassOnly { get; set; }
     public PublishMode PublishMode { get; set; } = PublishMode.Hidden;
     public DateTimeOffset? PublishFrom { get; set; }
     public DateTimeOffset? PublishUntil { get; set; }

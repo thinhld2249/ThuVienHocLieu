@@ -66,6 +66,7 @@ public static class SettingKeys
     public const string UploadAllowedExt = "upload.allowed_ext";
 
     public const int DefaultMaxMb = 50;
+    // mp4 đã bỏ — video dùng link nhúng trong mô tả (decisions.md 2026-10-09)
     public static readonly string[] DefaultAllowedExt =
-        ["pdf", "doc", "docx", "ppt", "pptx", "xls", "xlsx", "jpg", "jpeg", "png", "webp", "mp4"];
+        ["pdf", "doc", "docx", "ppt", "pptx", "xls", "xlsx", "jpg", "jpeg", "png", "webp"];
 }

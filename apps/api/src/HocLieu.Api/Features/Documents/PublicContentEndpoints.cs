@@ -27,12 +27,8 @@ public static class PublicContentEndpoints
             var filter = new DocumentsService.PublicListFilter(
                 kind, section, grade, subject, year, week, q, sort, p, ps);
 
-            var (all, total) = await svc.ListPublicAsync(viewer, filter, ct);
-            var items = all
-                .Skip((p - 1) * ps)
-                .Take(ps)
-                .ToList();
-
+            // Phân trang đã thực hiện ở SQL trong ListPublicAsync (performance).
+            var (items, total) = await svc.ListPublicAsync(viewer, filter, ct);
             return Results.Ok(new PagedResult<PublicItemRow>(items, total, p, ps));
         })
         .WithName("public.items")

@@ -182,7 +182,7 @@ export function BaiTapPage() {
 
         {data.descriptionHtml ? (
           <div
-            className="mb-6 max-w-prose text-base leading-relaxed [&_img]:max-w-full [&_p]:my-1"
+            className="mb-6 max-w-prose text-base leading-relaxed [&_iframe]:my-3 [&_iframe]:aspect-video [&_iframe]:h-auto [&_iframe]:w-full [&_iframe]:rounded-card [&_iframe]:border [&_iframe]:border-grid [&_img]:max-w-full [&_p]:my-1"
             dangerouslySetInnerHTML={{ __html: data.descriptionHtml }}
           />
         ) : null}

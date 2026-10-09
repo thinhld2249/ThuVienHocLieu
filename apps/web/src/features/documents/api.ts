@@ -48,6 +48,8 @@ export function usePublicItems(params: PublicItemsParams, enabled = true) {
   return useQuery({
     queryKey: ["public", "items", { ...params, page, pageSize }],
     enabled,
+    // Đồng bộ cache công khai 30s của BE (spec §4.4) — không refetch khi quay lại trang.
+    staleTime: 30_000,
     queryFn: async () => {
       const { data, error } = await api.GET("/api/public/items", {
         params: {
@@ -120,6 +122,7 @@ export function usePublicDocument(id: number | null) {
   return useQuery({
     queryKey: ["public", "document", id],
     enabled: id != null,
+    staleTime: 30_000,
     queryFn: async () => {
       const { data, error } = await api.GET("/api/public/documents/{id}", {
         params: { path: { id: String(id) } },
@@ -137,6 +140,7 @@ export function usePublicDocumentRelated(id: number | null) {
   return useQuery({
     queryKey: ["public", "document", id, "related"],
     enabled: id != null,
+    staleTime: 30_000,
     queryFn: async () => {
       const { data, error } = await api.GET(
         "/api/public/documents/{id}/related",

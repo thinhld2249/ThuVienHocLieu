@@ -119,15 +119,15 @@ export function FileDropzone({
           Kéo-thả file vào đây hoặc bấm để chọn
         </p>
         <p className="text-xs text-muted">
-          Tối đa {maxFiles} file · pdf, office, ảnh, video (theo cài đặt hệ
-          thống)
+          Tối đa {maxFiles} file · pdf, office, ảnh (theo cài đặt hệ thống).
+          Video: dán link vào phần mô tả.
         </p>
         <input
           ref={inputRef}
           type="file"
           multiple
           hidden
-          accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.jpg,.jpeg,.png,.webp,.mp4"
+          accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.jpg,.jpeg,.png,.webp"
           onChange={(e) => {
             if (e.target.files?.length) onAdd(e.target.files);
             e.target.value = "";

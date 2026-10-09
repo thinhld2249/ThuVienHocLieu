@@ -1,3 +1,4 @@
+using System.Text.RegularExpressions;
 using Ganss.Xss;
 
 namespace HocLieu.Common;
@@ -10,10 +11,28 @@ public static class HtmlSanitize
         "p", "br", "strong", "em", "u", "s", "sub", "sup",
         "ul", "ol", "li", "blockquote",
         "table", "thead", "tbody", "tr", "th", "td",
-        "a", "img",
+        "a", "img", "iframe",
     ];
 
-    private static readonly string[] AllowedAttributeList = ["href", "src", "alt"];
+    // iframe: src (nhúng video) + thuộc tính hiển thị (decisions.md 2026-10-09)
+    private static readonly string[] AllowedAttributeList =
+        ["href", "src", "alt", "width", "height", "frameborder", "allow", "allowfullscreen", "title"];
+
+    // Chỉ nhúng video từ các host này — chặn iframe trỏ site khác (clickjacking/leak)
+    private static readonly string[] AllowedIframeHosts =
+    [
+        "youtube.com", "www.youtube.com", "youtube-nocookie.com", "www.youtube-nocookie.com",
+        "youtu.be", "vimeo.com", "player.vimeo.com", "drive.google.com",
+    ];
+
+    // cặp <iframe>…</iframe> hoặc thẻ đơn (self-closing)
+    private static readonly Regex IframeBlockRegex = new(
+        @"<iframe\b[^>]*>.*?</iframe>|<iframe\b[^>]*/?>",
+        RegexOptions.Compiled | RegexOptions.IgnoreCase | RegexOptions.Singleline);
+
+    private static readonly Regex IframeSrcRegex = new(
+        @"src=""(?<src>[^""]+)""",
+        RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
     public static readonly HtmlSanitizer Sanitizer = CreateSanitizer();
 
@@ -37,10 +56,30 @@ public static class HtmlSanitize
     {
         if (string.IsNullOrWhiteSpace(html))
             return string.Empty;
-        var cleaned = Sanitizer.Sanitize(html);
-        // chỉ giữ link https (http → https)
-        return cleaned
+        // nâng http → https TRƯỚC sanitize (sanitizer chỉ cho scheme https — làm sau thì src đã bị loại)
+        var normalized = html
             .Replace("href=\"http://", "href=\"https://", StringComparison.Ordinal)
             .Replace("src=\"http://", "src=\"https://", StringComparison.Ordinal);
+        return RemoveNonAllowedIframes(Sanitizer.Sanitize(normalized));
     }
+
+    private static string RemoveNonAllowedIframes(string html)
+        => IframeBlockRegex.Replace(html, m =>
+        {
+            var srcMatch = IframeSrcRegex.Match(m.Value);
+            if (srcMatch.Success)
+            {
+                try
+                {
+                    var host = new Uri(srcMatch.Groups["src"].Value).Host.ToLowerInvariant();
+                    if (AllowedIframeHosts.Contains(host))
+                        return m.Value;
+                }
+                catch (UriFormatException)
+                {
+                    // src không phải URL hợp lệ → xóa
+                }
+            }
+            return string.Empty;
+        });
 }

@@ -69,16 +69,18 @@ public static class DbSeeder
 
     private static async Task SeedSectionsAsync(AppDbContext db, CancellationToken ct)
     {
-        var sections = new (string Slug, string Name, string Icon, string Color, SectionContentKind Kind, PublishMode DefaultPublish, ContentScope DefaultScope, bool RequireWeek, bool IsInternal)[]
+        // 2026-10-09: "Bài giảng điện tử" tạm ẩn (is_active = false) — chưa dùng,
+        // video chuyển sang link nhúng trong mô tả (decisions.md). Bật lại tại /admin/danh-muc.
+        var sections = new (string Slug, string Name, string Icon, string Color, SectionContentKind Kind, PublishMode DefaultPublish, ContentScope DefaultScope, bool RequireWeek, bool IsInternal, bool IsActive)[]
         {
-            ("bai-giang-dien-tu", "Bài giảng điện tử", "presentation", "#2f6fdb", SectionContentKind.Document, PublishMode.Visible, ContentScope.Public, false, false),
-            ("phan-phoi-chuong-trinh", "Phân phối chương trình", "calendar-range", "#0e8a87", SectionContentKind.Document, PublishMode.Visible, ContentScope.Public, false, false),
-            ("ke-hoach-bai-day", "Kế hoạch bài dạy", "book-open", "#3a8d3f", SectionContentKind.Document, PublishMode.Visible, ContentScope.Public, false, false),
-            ("bai-tap-cuoi-tuan", "Bài tập cuối tuần", "pencil-line", "#e07a1f", SectionContentKind.Both, PublishMode.Hidden, ContentScope.Public, true, false),
-            ("de-khao-sat", "Đề khảo sát", "file-search", "#c2375b", SectionContentKind.Both, PublishMode.Hidden, ContentScope.Public, false, false),
-            ("chuyen-de", "Chuyên đề", "lightbulb", "#8a5a2b", SectionContentKind.Document, PublishMode.Visible, ContentScope.Public, false, false),
-            ("ke-hoach-chu-nhiem", "Kế hoạch chủ nhiệm", "calendar-check", "#6b5bd6", SectionContentKind.Document, PublishMode.Visible, ContentScope.Public, false, false),
-            ("ho-so-to", "Hồ sơ tổ", "users", "#5e6b7a", SectionContentKind.Document, PublishMode.Visible, ContentScope.Team, false, true),
+            ("bai-giang-dien-tu", "Bài giảng điện tử", "presentation", "#2f6fdb", SectionContentKind.Document, PublishMode.Visible, ContentScope.Public, false, false, false),
+            ("phan-phoi-chuong-trinh", "Phân phối chương trình", "calendar-range", "#0e8a87", SectionContentKind.Document, PublishMode.Visible, ContentScope.Public, false, false, true),
+            ("ke-hoach-bai-day", "Kế hoạch bài dạy", "book-open", "#3a8d3f", SectionContentKind.Document, PublishMode.Visible, ContentScope.Public, false, false, true),
+            ("bai-tap-cuoi-tuan", "Bài tập cuối tuần", "pencil-line", "#e07a1f", SectionContentKind.Both, PublishMode.Hidden, ContentScope.Public, true, false, true),
+            ("de-khao-sat", "Đề khảo sát", "file-search", "#c2375b", SectionContentKind.Both, PublishMode.Hidden, ContentScope.Public, false, false, true),
+            ("chuyen-de", "Chuyên đề", "lightbulb", "#8a5a2b", SectionContentKind.Document, PublishMode.Visible, ContentScope.Public, false, false, true),
+            ("ke-hoach-chu-nhiem", "Kế hoạch chủ nhiệm", "calendar-check", "#6b5bd6", SectionContentKind.Document, PublishMode.Visible, ContentScope.Public, false, false, true),
+            ("ho-so-to", "Hồ sơ tổ", "users", "#5e6b7a", SectionContentKind.Document, PublishMode.Visible, ContentScope.Team, false, true, true),
         };
 
         var existing = (await db.Sections.Select(s => s.Slug).ToListAsync(ct)).ToHashSet();
@@ -102,6 +104,7 @@ public static class DbSeeder
                 DefaultScope = s.DefaultScope,
                 RequireWeek = s.RequireWeek,
                 IsInternal = s.IsInternal,
+                IsActive = s.IsActive,
             });
             sort++;
         }
@@ -139,7 +142,8 @@ public static class DbSeeder
             ["content.show_author_public"] = "true",
             ["download.guest_default"] = "false",
             ["upload.max_mb"] = "50",
-            ["upload.allowed_ext"] = "[\"pdf\",\"doc\",\"docx\",\"ppt\",\"pptx\",\"xls\",\"xlsx\",\"jpg\",\"jpeg\",\"png\",\"webp\",\"mp4\"]",
+            // 2026-10-09: bỏ mp4 — video dùng link nhúng trong mô tả (decisions.md)
+            ["upload.allowed_ext"] = "[\"pdf\",\"doc\",\"docx\",\"ppt\",\"pptx\",\"xls\",\"xlsx\",\"jpg\",\"jpeg\",\"png\",\"webp\"]",
         };
         var existing = (await db.AppSettings.Select(s => s.Key).ToListAsync(ct)).ToHashSet();
         foreach (var (key, value) in defaults)

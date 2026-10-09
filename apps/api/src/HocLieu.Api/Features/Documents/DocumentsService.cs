@@ -1,4 +1,3 @@
-using Ganss.Xss;
 using HocLieu.Common;
 using HocLieu.Common.Auth;
 using HocLieu.Domain;
@@ -28,7 +27,6 @@ public sealed class DocumentsService(
     AppDbContext db,
     AppSettingsService settings,
     IAuditLogger audit,
-    HtmlSanitizer sanitizer,
     TimeProvider time)
 {
     // ========== KHU GIÁO VIÊN ==========
@@ -169,7 +167,7 @@ public sealed class DocumentsService(
 
         var descriptionHtml = string.IsNullOrWhiteSpace(req.DescriptionHtml)
             ? null
-            : sanitizer.Sanitize(req.DescriptionHtml);
+            : HtmlSanitize.Clean(req.DescriptionHtml);
 
         if (errors.Count > 0)
             return (errors, null);
@@ -500,7 +498,7 @@ public sealed class DocumentsService(
     }
 
     private static bool DocumentVisibleToQuiz(Quiz q, ViewerContext viewer, DateTimeOffset now)
-        => (q.IsLive(now) && viewer.ScopeAllows(q.Scope, q.TeamId))
+        => (!q.ClassOnly && q.IsLive(now) && viewer.ScopeAllows(q.Scope, q.TeamId))
            || viewer.IsAdmin
            || q.OwnerId == viewer.UserId
            || (q.TeamId is not null && viewer.LeadOrDeputyTeamIds.Contains(q.TeamId.Value));
@@ -514,7 +512,7 @@ public sealed class DocumentsService(
     /// <summary>
     /// Danh sách công khai: VisibleTo ∩ (Public, Teachers) — Team/Private không lộ ở khu công khai.
     /// Tìm: search_text (f_unaccent) ILIKE theo query đã chuẩn hóa (decisions.md M3).
-    /// Trả danh sách đầy đủ (đã sắp xếp) + total — endpoint phân trang bằng PagedResult.Of.
+    /// Phân trang ở SQL (LIMIT/OFFSET + COUNT) — không materialize toàn bộ kết quả.
     /// </summary>
     public async Task<(IReadOnlyList<PublicItemRow> Items, int Total)> ListPublicAsync(
         ViewerContext viewer, PublicListFilter f, CancellationToken ct)
@@ -522,17 +520,26 @@ public sealed class DocumentsService(
         var now = time.GetUtcNow();
         var normQ = string.IsNullOrWhiteSpace(f.Q) ? null : Text.NormalizeForSearch(f.Q);
         var kind = string.IsNullOrWhiteSpace(f.Kind) ? "document" : f.Kind.ToLowerInvariant();
+        var skip = (f.Page - 1) * f.PageSize;
 
         if (kind == "document")
         {
-            var docs = await QueryDocs(viewer, f, normQ, now)
+            var docsQuery = QueryDocs(viewer, f, normQ, now);
+            var total = await docsQuery.CountAsync(ct);
+            var docs = await docsQuery
+                .Skip(skip)
+                .Take(f.PageSize)
                 .ToListAsync(ct);
-            return (docs.Select(ToPublicItemRow).ToList(), docs.Count);
+            return (docs.Select(ToPublicItemRow).ToList(), total);
         }
 
-        var quizzes = await QueryQuizzes(viewer, f, normQ, now)
+        var quizzesQuery = QueryQuizzes(viewer, f, normQ, now);
+        var totalQuizzes = await quizzesQuery.CountAsync(ct);
+        var quizzes = await quizzesQuery
+            .Skip(skip)
+            .Take(f.PageSize)
             .ToListAsync(ct);
-        return (quizzes.Select(ToPublicQuizRow).ToList(), quizzes.Count);
+        return (quizzes.Select(ToPublicQuizRow).ToList(), totalQuizzes);
     }
 
     private sealed record DocRow(

@@ -14,6 +14,7 @@ import { useFileUploads } from "@/features/files/api";
 import { FileDropzone } from "@/components/common/FileDropzone";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { videoEmbedBlockForLine } from "@/lib/video-embed";
 import { cn } from "@/lib/utils";
 
 const inputCls =
@@ -21,19 +22,23 @@ const inputCls =
 const labelCls = "mb-1 block text-sm font-medium";
 const errCls = "mt-1 text-xs text-redpen";
 
-/** Escape HTML + tách dòng → <p> (mô tả tối giản, spec §5.2). */
+/**
+ * Escape HTML + tách dòng → <p> (mô tả tối giản, spec §5.2).
+ * Dòng chỉ chứa link video (YouTube/Vimeo/Google Drive) → iframe nhúng.
+ */
 function plainToHtml(text: string): string | null {
   const trimmed = text.trim();
   if (!trimmed) return null;
-  const esc = trimmed
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
-  return esc
+  const esc = (s: string) =>
+    s
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;");
+  return trimmed
     .split(/\n+/)
-    .filter((l) => l.length > 0)
-    .map((l) => `<p>${l}</p>`)
+    .filter((l) => l.trim().length > 0)
+    .map((l) => videoEmbedBlockForLine(l) ?? `<p>${esc(l.trim())}</p>`)
     .join("");
 }
 
@@ -463,6 +468,10 @@ export function TaiLieuFormPage() {
               placeholder="Mỗi dòng là một đoạn."
               className="w-full rounded-btn border border-grid bg-white p-2.5 text-sm outline-none focus:border-violet"
             />
+            <p className="mt-1 text-xs text-muted">
+              Video: dán link YouTube / Google Drive / Vimeo vào một dòng riêng
+              — hệ thống tự nhúng video vào trang tài liệu.
+            </p>
           </div>
         </div>
 

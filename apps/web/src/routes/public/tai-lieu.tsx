@@ -154,7 +154,7 @@ export function TaiLieuPage() {
         ) : null}
         {data.descriptionHtml ? (
           <div
-            className="mb-6 max-w-prose text-base leading-relaxed [&_table]:w-full [&_table]:border-collapse [&_td]:border [&_td]:border-grid [&_td]:p-1.5 [&_th]:border [&_th]:border-grid [&_th]:p-1.5"
+            className="mb-6 max-w-prose text-base leading-relaxed [&_iframe]:my-3 [&_iframe]:aspect-video [&_iframe]:h-auto [&_iframe]:w-full [&_iframe]:rounded-card [&_iframe]:border [&_iframe]:border-grid [&_table]:w-full [&_table]:border-collapse [&_td]:border [&_td]:border-grid [&_td]:p-1.5 [&_th]:border [&_th]:border-grid [&_th]:p-1.5"
             dangerouslySetInnerHTML={{ __html: data.descriptionHtml }}
           />
         ) : null}

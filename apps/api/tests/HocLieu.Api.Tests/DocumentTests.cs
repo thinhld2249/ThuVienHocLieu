@@ -231,7 +231,9 @@ public class DocumentTests : IClassFixture<TestApp>
                     "<script>alert(1)</script>" +
                     "<a href=\"https://example.com/vi\">link</a>" +
                     "<a href=\"javascript:alert(2)\">xấu</a>" +
-                    "<img src=\"https://res.cloudinary.com/x.jpg\" alt=\"ảnh\">",
+                    "<img src=\"https://res.cloudinary.com/x.jpg\" alt=\"ảnh\">" +
+                    "<iframe src=\"https://www.youtube-nocookie.com/embed/AbC123xyz-_\" width=\"560\" height=\"315\" allowfullscreen title=\"Video\"></iframe>" +
+                    "<iframe src=\"https://evil.com/x.html\" width=\"640\" height=\"360\"></iframe>",
                 allowGuestDownload = true,
             }, teacher.Cookie));
         resp.StatusCode.ShouldBe(HttpStatusCode.Created);
@@ -244,6 +246,8 @@ public class DocumentTests : IClassFixture<TestApp>
         var html = detail.GetProperty("descriptionHtml").GetString()!;
         html.ShouldNotContain("<script>");
         html.ShouldNotContain("javascript:");
+        html.ShouldNotContain("evil.com"); // iframe ngoài allowlist host video bị bỏ (decisions.md 2026-10-09)
+        html.ShouldContain("youtube-nocookie.com/embed/AbC123xyz-_");
         html.ShouldContain("https://example.com/vi");
         html.ShouldContain("<strong>");
         html.ShouldContain("res.cloudinary.com");

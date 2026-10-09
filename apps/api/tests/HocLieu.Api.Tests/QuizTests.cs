@@ -262,6 +262,130 @@ public class QuizTests : IClassFixture<TestApp>
         bad.StatusCode.ShouldBe(HttpStatusCode.UnprocessableEntity);
     }
 
+    [Fact]
+    public async Task ClassOnly_HiddenFromPublic_ButWorksViaAssignmentCode()
+    {
+        var teacher = await CreateTeacherAsync($"t-{NewTag()}@gmail.com", "GV Lớp Riêng");
+        var tag = NewTag();
+        var title = $"Đề lớp riêng {tag}";
+        var quizId = await CreateQuizViaApiAsync(teacher.Cookie, title);
+
+        // Bật classOnly qua PUT settings (1 câu để thử được luồng attempt)
+        var sectionId = await SectionIdAsync("de-khao-sat");
+        var detail = await QuizDetailAsync(teacher.Cookie, quizId);
+        detail.GetProperty("classOnly").GetBoolean().ShouldBeFalse();
+        var put = await Client.SendAsync(WriteReq(HttpMethod.Put, $"/api/teacher/quizzes/{quizId}",
+            new
+            {
+                title,
+                sectionId,
+                gradeId = 5,
+                updatedAt = detail.GetProperty("updatedAt").GetString(),
+                settings = new { classOnly = true },
+                questions = new[]
+                {
+                    new
+                    {
+                        sort = 1,
+                        type = "Single",
+                        contentHtml = "<p>Câu 1: 2 + 2 = ?</p>",
+                        options = new[]
+                        {
+                            new { sort = 1, contentHtml = "A. 3", isCorrect = false },
+                            new { sort = 2, contentHtml = "B. 4", isCorrect = true },
+                        },
+                    },
+                },
+            }, teacher.Cookie));
+        put.StatusCode.ShouldBe(HttpStatusCode.OK, await put.Content.ReadAsStringAsync());
+        (await QuizDetailAsync(teacher.Cookie, quizId)).GetProperty("classOnly").GetBoolean().ShouldBeTrue();
+
+        // Hiện → khách vẫn 404 ở chi tiết + attempt trực tiếp + không có trong danh sách công khai
+        var show = await Client.SendAsync(WriteReq(HttpMethod.Patch, $"/api/teacher/quizzes/{quizId}/publish",
+            new { mode = "Visible" }, teacher.Cookie));
+        show.StatusCode.ShouldBe(HttpStatusCode.OK, await show.Content.ReadAsStringAsync());
+        (await Client.SendAsync(Req(HttpMethod.Get, $"/api/public/quizzes/{quizId}"))).StatusCode
+            .ShouldBe(HttpStatusCode.NotFound);
+
+        var directReq = new HttpRequestMessage(HttpMethod.Post, $"/api/public/quizzes/{quizId}/attempts")
+        {
+            Content = new StringContent(JsonSerializer.Serialize(new { guestName = "HS Khách" }),
+                Encoding.UTF8, "application/json"),
+        };
+        directReq.Headers.Add("X-Requested-With", "hoclieu");
+        (await Client.SendAsync(directReq)).StatusCode.ShouldBe(HttpStatusCode.NotFound);
+
+        var items = await JsonAsync(await Client.SendAsync(
+            Req(HttpMethod.Get, $"/api/public/items?kind=quiz&q={tag}")));
+        items.GetProperty("total").GetInt32().ShouldBe(0);
+
+        // Nhưng qua mã giao bài: học sinh trong lớp xem & làm được bình thường
+        var classResp = await Client.SendAsync(WriteReq(HttpMethod.Post, "/api/teacher/classes",
+            new { name = $"5{tag[..3]}", gradeId = 5 }, teacher.Cookie));
+        classResp.StatusCode.ShouldBe(HttpStatusCode.Created, await classResp.Content.ReadAsStringAsync());
+        var classId = (await JsonAsync(classResp)).GetProperty("id").GetInt64();
+
+        var stuResp = await Client.SendAsync(WriteReq(HttpMethod.Post, $"/api/teacher/classes/{classId}/students",
+            new { fullName = "Học Sinh Lớp Riêng" }, teacher.Cookie));
+        stuResp.StatusCode.ShouldBe(HttpStatusCode.Created, await stuResp.Content.ReadAsStringAsync());
+        var studentId = (await JsonAsync(stuResp)).GetProperty("id").GetInt64();
+
+        var asgResp = await Client.SendAsync(WriteReq(HttpMethod.Post, $"/api/teacher/classes/{classId}/assignments",
+            new { quizId, useRoster = true }, teacher.Cookie));
+        asgResp.StatusCode.ShouldBe(HttpStatusCode.Created, await asgResp.Content.ReadAsStringAsync());
+        var code = (await JsonAsync(asgResp)).GetProperty("code").GetString()!;
+
+        var gate = await JsonAsync(await Client.SendAsync(Req(HttpMethod.Get, $"/api/public/assignments/{code}")));
+        gate.GetProperty("quizTitle").GetString().ShouldBe(title);
+
+        var attemptReq = new HttpRequestMessage(HttpMethod.Post, $"/api/public/assignments/{code}/attempts")
+        {
+            Content = new StringContent(JsonSerializer.Serialize(new { studentId }),
+                Encoding.UTF8, "application/json"),
+        };
+        attemptReq.Headers.Add("X-Requested-With", "hoclieu");
+        var attempt = await JsonAsync(await Client.SendAsync(attemptReq));
+        attempt.GetProperty("status").GetString().ShouldBe("InProgress");
+
+        // Tắt classOnly → bài tập lộ ra khu công khai (vẫn đang Hiện)
+        var detail2 = await QuizDetailAsync(teacher.Cookie, quizId);
+        var q2 = detail2.GetProperty("questions").EnumerateArray().Single();
+        var putOff = await Client.SendAsync(WriteReq(HttpMethod.Put, $"/api/teacher/quizzes/{quizId}",
+            new
+            {
+                title,
+                sectionId,
+                gradeId = 5,
+                updatedAt = detail2.GetProperty("updatedAt").GetString(),
+                settings = new { classOnly = false },
+                questions = new[]
+                {
+                    new
+                    {
+                        id = q2.GetProperty("id").GetInt64(),
+                        sort = 1,
+                        type = "Single",
+                        contentHtml = q2.GetProperty("contentHtml").GetString(),
+                        options = q2.GetProperty("options").EnumerateArray().ToArray()
+                            .Select((o, i) => new
+                            {
+                                id = o.GetProperty("id").GetInt64(),
+                                sort = i + 1,
+                                contentHtml = o.GetProperty("contentHtml").GetString(),
+                                isCorrect = o.GetProperty("isCorrect").GetBoolean(),
+                            }).ToArray(),
+                    },
+                },
+            }, teacher.Cookie));
+        putOff.StatusCode.ShouldBe(HttpStatusCode.OK, await putOff.Content.ReadAsStringAsync());
+
+        (await Client.SendAsync(Req(HttpMethod.Get, $"/api/public/quizzes/{quizId}"))).StatusCode
+            .ShouldBe(HttpStatusCode.OK);
+        var items2 = await JsonAsync(await Client.SendAsync(
+            Req(HttpMethod.Get, $"/api/public/items?kind=quiz&q={tag}")));
+        items2.GetProperty("total").GetInt32().ShouldBe(1);
+    }
+
     // ===== Nhân bản / xóa mềm =====
 
     [Fact]

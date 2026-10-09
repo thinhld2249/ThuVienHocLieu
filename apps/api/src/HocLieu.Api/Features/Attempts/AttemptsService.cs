@@ -36,7 +36,8 @@ public class AttemptsService(AppDbContext db, TimeProvider time)
     {
         var now = time.GetUtcNow();
         var quiz = await db.Quizzes.FirstOrDefaultAsync(q => q.Id == quizId, ct);
-        if (quiz is null || !quiz.IsLive(now) || quiz.Scope != ContentScope.Public)
+        // ClassOnly: học sinh chỉ vào được qua mã giao bài (CreateForAssignmentAsync).
+        if (quiz is null || quiz.ClassOnly || !quiz.IsLive(now) || quiz.Scope != ContentScope.Public)
             return null;
 
         string? guestName = null;

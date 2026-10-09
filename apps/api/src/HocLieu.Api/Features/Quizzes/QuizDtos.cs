@@ -28,7 +28,8 @@ public sealed record QuizSettings(
     string? IdentityMode,
     short? MaxAttempts,
     string? MultiScoring,
-    string? ScoreRounding);
+    string? ScoreRounding,
+    bool? ClassOnly);
 
 /// <summary>PUT /teacher/quizzes/{id} — thay toàn bộ: câu có id = cập nhật, không id = thêm, thiếu = xóa.</summary>
 public sealed record UpdateQuizRequest(
@@ -86,7 +87,7 @@ public sealed record QuizDetailDto(
     short? WeekNo,
     long? TeamId, string? TeamName,
     long? OwnerId, string? OwnerName,
-    string Scope, string PublishMode,
+    string Scope, bool ClassOnly, string PublishMode,
     DateTimeOffset? PublishFrom, DateTimeOffset? PublishUntil, string PublishState,
     string ModerationStatus, string? ModerationNote,
     short? TimeLimitMinutes, bool ShuffleQuestions, bool ShuffleOptions,

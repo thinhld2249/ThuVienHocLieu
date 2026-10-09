@@ -89,7 +89,7 @@ public static class Visibility
     /// <summary>§4.3: quiz đơn lẻ có thấy được với viewer không (endpoint công khai: không thấy → 404).</summary>
     public static bool QuizVisibleTo(Quiz q, ViewerContext viewer, DateTimeOffset now)
         => !q.IsDeleted
-           && ((q.IsLive(now) && viewer.ScopeAllows(q.Scope, q.TeamId))
+           && (((!q.ClassOnly) && q.IsLive(now) && viewer.ScopeAllows(q.Scope, q.TeamId))
                || viewer.IsAdmin
                || (viewer.UserId is not null && q.OwnerId == viewer.UserId)
                || (q.TeamId is not null && viewer.LeadOrDeputyTeamIds.Contains(q.TeamId.Value)));
@@ -98,12 +98,14 @@ public static class Visibility
     /// Trang giới thiệu quiz công khai (§5.1): khách được xem intro (trạng thái
     /// Sắp mở/Đang mở/Đã đóng) của quiz phạm vi Public + Scheduled dù ngoài khung giờ
     /// — link hẹn giờ được GV chia sẻ cho học sinh. Hidden / scope khác vẫn 404 (M4).
+    /// Quiz ClassOnly không có intro công khai (chỉ vào được qua mã giao bài).
     /// Việc BẮT ĐẦU làm bài vẫn gate chặt bằng IsLive (AttemptsService).
     /// </summary>
     public static bool QuizIntroVisibleTo(Quiz q, ViewerContext viewer, DateTimeOffset now)
         => !q.IsDeleted
            && (QuizVisibleTo(q, viewer, now)
                || (viewer.UserId is null
+                   && !q.ClassOnly
                    && q.Scope == ContentScope.Public
                    && q.ModerationStatus == ModerationStatus.Approved
                    && q.PublishMode == PublishMode.Scheduled));
@@ -116,7 +118,8 @@ public static class Visibility
         var leadTeamIds = viewer.LeadOrDeputyTeamIds.ToList();
 
         return q.Where(d =>
-            (d.ModerationStatus == ModerationStatus.Approved
+            (!d.ClassOnly
+             && d.ModerationStatus == ModerationStatus.Approved
              && (d.PublishMode == PublishMode.Visible
                  || (d.PublishMode == PublishMode.Scheduled
                      && (d.PublishFrom == null || d.PublishFrom <= now)

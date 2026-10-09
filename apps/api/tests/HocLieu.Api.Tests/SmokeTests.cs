@@ -45,7 +45,8 @@ public class SmokeTests : IClassFixture<TestApp>
         var years = json.GetProperty("schoolYears").GetArrayLength();
 
         // seed §9: 8 chuyên mục, khối 1–5, 13 môn, 1 năm học (2026-2027 hiện tại)
-        sections.ShouldBe(8);
+        // 2026-10-09: "Bài giảng điện tử" tạm ẩn (is_active = false) → taxonomy công khai chỉ còn 7
+        sections.ShouldBe(7);
         grades.ShouldBe(5);
         subjects.ShouldBe(13);
         years.ShouldBe(1);
@@ -66,8 +67,9 @@ public class SmokeTests : IClassFixture<TestApp>
         json.GetProperty("stats").GetProperty("quizzes").GetInt32().ShouldBe(0);
         json.GetProperty("stats").GetProperty("teachers").GetInt32().ShouldBe(0);
         json.GetProperty("openQuizzes").GetArrayLength().ShouldBe(0);
-        // Trang chủ chỉ hiện 7 ô chuyên mục công khai (spec §5.1); ho-so-to là internal
-        json.GetProperty("sections").GetArrayLength().ShouldBe(7);
+        // Trang chủ chỉ hiện chuyên mục công khai (spec §5.1); ho-so-to là internal,
+        // 2026-10-09: bai-giang-dien-tu tạm ẩn → 8 − 1 (internal) − 1 (ẩn) = 6
+        json.GetProperty("sections").GetArrayLength().ShouldBe(6);
     }
 
     [Fact]

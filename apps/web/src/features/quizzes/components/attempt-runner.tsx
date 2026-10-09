@@ -49,6 +49,60 @@ function formatClock(totalSec: number): string {
   return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
 }
 
+/**
+ * Đồng hồ đếm ngược theo expiresAt của server.
+ * Component cô lập: state nằm ở đây nên mỗi giây chỉ span này re-render,
+ * không kéo theo toàn cây câu hỏi (tránh lag trên mobile yếu).
+ */
+function Countdown({
+  expiresAt,
+  onExpire,
+}: {
+  expiresAt: string;
+  onExpire: () => void;
+}) {
+  const [timeLeft, setTimeLeft] = useState(() =>
+    Math.max(
+      0,
+      Math.round((new Date(expiresAt).getTime() - Date.now()) / 1000),
+    ),
+  );
+
+  useEffect(() => {
+    let t: number | null = null;
+    const tick = () => {
+      const left = Math.max(
+        0,
+        Math.round((new Date(expiresAt).getTime() - Date.now()) / 1000),
+      );
+      setTimeLeft(left);
+      if (left <= 0) {
+        if (t != null) window.clearInterval(t);
+        onExpire();
+      }
+    };
+    tick();
+    t = window.setInterval(tick, 1000);
+    return () => window.clearInterval(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [expiresAt]);
+
+  return (
+    <span
+      className={cn(
+        "rounded-btn border px-2 py-0.5 text-sm font-semibold tabular-nums",
+        timeLeft <= 60
+          ? "border-redpen/40 bg-redpen/10 text-redpen"
+          : "border-grid bg-white text-ink",
+      )}
+      role="timer"
+      aria-label={`Còn ${formatClock(timeLeft)}`}
+    >
+      {formatClock(timeLeft)}
+    </span>
+  );
+}
+
 export interface AttemptRunnerData {
   questions: AttemptQuestion[];
   groups: AttemptGroup[];
@@ -104,7 +158,6 @@ export function AttemptRunner({
   const [saveState, setSaveState] = useState<
     "idle" | "saving" | "saved" | "error"
   >("idle");
-  const [timeLeft, setTimeLeft] = useState<number | null>(null);
 
   const questions = data.questions;
 
@@ -186,26 +239,6 @@ export function AttemptRunner({
     }
   };
 
-  // ===== Đồng hồ đếm ngược theo expiresAt của server =====
-  useEffect(() => {
-    if (!live || !expiresAt) {
-      setTimeLeft(null);
-      return;
-    }
-    const tick = () => {
-      const left = Math.max(
-        0,
-        Math.round((new Date(expiresAt).getTime() - Date.now()) / 1000),
-      );
-      setTimeLeft(left);
-      if (left <= 0) void doSubmit();
-    };
-    tick();
-    const t = window.setInterval(tick, 1000);
-    return () => window.clearInterval(t);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [live, expiresAt]);
-
   // Dọn timer khi unmount.
   useEffect(
     () => () => {
@@ -225,6 +258,11 @@ export function AttemptRunner({
       finishedRef.current = false;
     }
   }, [live, attemptId, flush, submit, onFinished]);
+
+  // Hết giờ: Countdown (component riêng) gọi lại — doSubmit tự chống nộp lặp.
+  const handleExpire = useCallback(() => {
+    void doSubmit();
+  }, [doSubmit]);
 
   // ===== Render 1 câu =====
   const renderQuestion = (q: AttemptQuestion, idx: number) => {
@@ -433,19 +471,8 @@ export function AttemptRunner({
               A+
             </button>
           </div>
-          {timeLeft != null && live ? (
-            <span
-              className={cn(
-                "rounded-btn border px-2 py-0.5 text-sm font-semibold tabular-nums",
-                timeLeft <= 60
-                  ? "border-redpen/40 bg-redpen/10 text-redpen"
-                  : "border-grid bg-white text-ink",
-              )}
-              role="timer"
-              aria-label={`Còn ${formatClock(timeLeft)}`}
-            >
-              {formatClock(timeLeft)}
-            </span>
+          {live && expiresAt ? (
+            <Countdown expiresAt={expiresAt} onExpire={handleExpire} />
           ) : null}
         </div>
         {/* Tiến trình */}
