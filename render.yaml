@@ -6,8 +6,11 @@
 #
 # Tạo: Render dashboard → New + → Blueprint, hoặc CLI: render blueprint create
 # Hướng dẫn chi tiết + ước tính chi phí + hạn chế: docs/render-deploy.md
+# Dịch vụ Docker trong blueprint: type: web + runtime: docker (không có
+# type "docker" — render.com/docs/blueprint-spec).
 services:
-  - type: docker
+  - type: web
+    runtime: docker
     name: hoclieu-web
     dockerfilePath: ./apps/web/Dockerfile
     plan: starter
@@ -19,7 +22,8 @@ services:
       - key: API_URL
         value: "https://hoclieu-api.onrender.com"
 
-  - type: docker
+  - type: web
+    runtime: docker
     name: hoclieu-api
     dockerfilePath: ./apps/api/Dockerfile
     plan: starter
@@ -53,7 +57,8 @@ services:
         value: "d2587e3d9c194a3382f8a580ebd4e01542085ccc4d884743af824f340f881e07"
       # SMTP (tuỳ chọn — thêm Smtp__Host/__Port/__User/__Password/__From nếu dùng email).
 
-  - type: docker
+  - type: web
+    runtime: docker
     name: hoclieu-gotenberg
     dockerfilePath: ./deploy/gotenberg/Dockerfile
     plan: starter
