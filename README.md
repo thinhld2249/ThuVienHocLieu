@@ -64,6 +64,8 @@ API đọc từ env / `appsettings.json` (chi tiết: `apps/api/src/HocLieu.Api/
 
 Production: `cp deploy/.env.example deploy/.env` → điền → `make up` (yêu cầu `SITE_DOMAIN` có DNS trỏ về VM).
 
+Deploy lên Render (thay cho 1 VM): blueprint `render.yaml` (3 Docker service + Postgres quản trị) — hướng dẫn tại [`docs/render-deploy.md`](docs/render-deploy.md).
+
 ## Kiểm thử
 
 ```bash

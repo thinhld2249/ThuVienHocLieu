@@ -1,0 +1,65 @@
+# Render Blueprint — tạo 4 resource từ repo này (deploy lên Render):
+#   hoclieu-web        Docker: Caddy + React dist (website công khai)
+#   hoclieu-api        Docker: ASP.NET Core (health check /health/live)
+#   hoclieu-gotenberg  Docker: chuyển Office → PDF
+#   hoclieu-db         PostgreSQL quản trị sẵn của Render
+#
+# Tạo: Render dashboard → New + → Blueprint, hoặc CLI: render blueprint create
+# Hướng dẫn chi tiết + ước tính chi phí + hạn chế: docs/render-deploy.md
+services:
+  - type: docker
+    name: hoclieu-web
+    dockerfilePath: ./apps/web/Dockerfile
+    plan: starter
+    envVars:
+      # Render LB xử lý TLS ở mép → Caddy chỉ phục vụ HTTP thường (chủ động ":80"
+      # để Caddy không tự xin Let's Encrypt).
+      - key: SITE_DOMAIN
+        value: "hoclieu-web.onrender.com:80"
+      - key: API_URL
+        value: "https://hoclieu-api.onrender.com"
+
+  - type: docker
+    name: hoclieu-api
+    dockerfilePath: ./apps/api/Dockerfile
+    plan: starter
+    healthCheckPath: /health/live
+    envVars:
+      - key: ConnectionStrings__Default
+        fromDatabase:
+          name: hoclieu-db
+          property: connectionString
+      - key: Db__MigrateOnStartup
+        value: "true"
+      - key: Auth__GoogleClientId
+        value: "795347854507-jv3nqlosef2fkangcs4var5shu4pgq75.apps.googleusercontent.com"
+      # Đăng nhập lần đầu bằng email này sẽ thành Admin (bắt buộc phải đúng email thật).
+      - key: Auth__AdminEmails
+        value: "thinhld2249@gmail.com"
+      # BẮT BUỘC trên Render: không có ổ đĩa bền cho Docker service → file phải lưu
+      # Cloudinary. Giá trị dưới đây là placeholder — nhập thật ở dashboard
+      # (sync: false để blueprint không đè giá trị bạn đã sửa).
+      - key: Cloudinary__Url
+        sync: false
+        value: "cloudinary://KEY:SECRET@CLOUD_NAME"
+      - key: Cloudinary__Root
+        value: "hoclieu-prod"
+      - key: Gotenberg__Url
+        value: "https://hoclieu-gotenberg.onrender.com"
+      # Render LB giới hạn body request ~10MB → giữ dưới ngưỡng.
+      - key: Upload__MaxMb
+        value: "9"
+      - key: Security__IpHashSalt
+        value: "d2587e3d9c194a3382f8a580ebd4e01542085ccc4d884743af824f340f881e07"
+      # SMTP (tuỳ chọn — thêm Smtp__Host/__Port/__User/__Password/__From nếu dùng email).
+
+  - type: docker
+    name: hoclieu-gotenberg
+    dockerfilePath: ./deploy/gotenberg/Dockerfile
+    plan: starter
+    healthCheckPath: /health
+
+databases:
+  - name: hoclieu-db
+    # Free Postgres của Render là trial 90 ngày — chạy thật nên chọn gói trả phí.
+    plan: starter

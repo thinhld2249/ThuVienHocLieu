@@ -15,8 +15,8 @@ RUN dotnet publish src/HocLieu.Api/HocLieu.Api.csproj -c Release -o /app/publish
 
 FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS runtime
 WORKDIR /app
-ENV ASPNETCORE_URLS=http://+:8080 \
-    DOTNET_GCServer=0
+ENV DOTNET_GCServer=0
 COPY --from=build /app/publish .
 EXPOSE 8080
-ENTRYPOINT ["dotnet", "HocLieu.Api.dll"]
+# Lắng nghe $PORT (Render) hoặc 8080 nếu $PORT chưa đặt (docker compose).
+ENTRYPOINT ["sh", "-c", "dotnet HocLieu.Api.dll --urls http://+:${PORT:-8080}"]

@@ -1,5 +1,7 @@
 # Caddy phục vụ React dist + reverse proxy /api (spec §15.1).
-# HTTPS tự động với chứng chỉ Let's Encrypt cho {$SITE_DOMAIN}.
+# HTTPS tự động với chứng chỉ Let's Encrypt cho {$SITE_DOMAIN} (khi domain
+# trần, vd 1-VM compose). Trên Render: SITE_DOMAIN="<host>:80" (Caddy phục vụ
+# HTTP thường, Render LB xử lý TLS) và API_URL = URL công khai của service api.
 {$SITE_DOMAIN:localhost:80} {
 	encode zstd gzip
 
@@ -9,23 +11,23 @@
 	}
 
 	handle /api/* {
-		reverse_proxy api:8080
+		reverse_proxy {$API_URL:api:8080}
 	}
 
 	# health cho monitoring từ ngoài (spec §13) — không proxy thì rơi SPA fallback trả 200 giả
 	handle /health/* {
-		reverse_proxy api:8080
+		reverse_proxy {$API_URL:api:8080}
 	}
 
 	handle /sitemap.xml {
-		reverse_proxy api:8080
+		reverse_proxy {$API_URL:api:8080}
 	}
 
 	# Asset Vite có hash trong tên file → cache 1 năm, không cần revalidate.
 	header /assets/* Cache-Control "public, max-age=31536000, immutable"
 
 	handle /openapi/* {
-		reverse_proxy api:8080
+		reverse_proxy {$API_URL:api:8080}
 	}
 
 	handle {
